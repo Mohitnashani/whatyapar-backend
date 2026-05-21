@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { acceptOrder } from '../api';
-import { generateWhatsAppLink } from '../utils/whatsapp';
+import { generateWhatsAppLink, sendWhatsAppMessage } from '../utils/whatsapp';
 import { Clock, MessageCircle, Check, Smartphone, FileText, Sparkles, Receipt } from 'lucide-react';
 
 const OrderCard = ({ order, onUpdate }) => {
@@ -11,6 +11,8 @@ const OrderCard = ({ order, onUpdate }) => {
     try {
       const updatedOrder = await acceptOrder(order._id);
       onUpdate(updatedOrder);
+      // Automatically redirect to WhatsApp after accepting
+      sendWhatsAppMessage(updatedOrder.mobileNumber, updatedOrder.aiSummary, updatedOrder.paymentLink);
     } catch (error) {
       console.error('Failed to accept order:', error);
     } finally {
