@@ -1,5 +1,6 @@
 export const generateWhatsAppLink = (mobileNumber, aiSummary, paymentLink) => {
-  const cleanNumber = mobileNumber.replace(/\D/g, '');
+  const safeNumber = mobileNumber || '';
+  const cleanNumber = safeNumber.replace(/\D/g, '');
   const message = `Here is your order summary:\n${aiSummary}\n\nPlease proceed with the payment here:\n${paymentLink}\n\nThank you for ordering with us!`;
   const encodedMessage = encodeURIComponent(message);
   const finalNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
@@ -8,6 +9,11 @@ export const generateWhatsAppLink = (mobileNumber, aiSummary, paymentLink) => {
 
 export const sendWhatsAppMessage = (mobileNumber, aiSummary, paymentLink) => {
   const url = generateWhatsAppLink(mobileNumber, aiSummary, paymentLink);
-  // Use window.location.href instead of window.open to bypass popup blockers after async await
-  window.location.href = url;
+  // Programmatic anchor click to bypass strict popup blockers
+  const link = document.createElement('a');
+  link.href = url;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
