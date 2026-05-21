@@ -1,54 +1,50 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// Fallback mock parser in case Gemini API key is not set or call fails
-const mockParse = (orderDescription) => {
-  const items = orderDescription
-    .split(/,|\n/)
-    .map(item => item.trim())
-    .filter(item => item.length > 1);
-  return items.length > 0 ? items.join(', ') : orderDescription;
-};
-
 const parseOrderWithAI = async (orderDescription) => {
   const apiKey = process.env.GEMINI_API_KEY;
 
-  // Fall back to mock if no API key configured
   if (!apiKey) {
-    console.warn('GEMINI_API_KEY not set — using mock parser');
-    return mockParse(orderDescription);
+    console.warn('⚠️  GEMINI_API_KEY not set on server — AI parsing disabled. Set it in Render environment variables.');
+    return orderDescription; // Return raw text so at least it's honest
   }
 
   try {
+    console.log('🤖 Calling Gemini to parse order...');
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = `You are an order parser for a small business. A customer has sent the following order message on WhatsApp:
+    const prompt = `You are an AI assistant for a small business order management system in India. A customer sent this message to place an order:
 
 "${orderDescription}"
 
-Extract and summarize this order in a clear, professional format. Include:
-- What items they want (with quantities if mentioned)
-- Any special instructions or notes
-- Any references to previous orders if mentioned
+Your job:
+1. Understand what the customer wants to order (items, quantities, sizes, colours, etc.)
+2. Note any special requests (delivery time, quality reference, urgency)
+3. Write a clean, structured order summary for the shop owner
 
-Reply ONLY with the clean order summary in 1-3 short lines. No extra explanation. No JSON. Just plain text that the shop owner can read at a glance.
+Rules:
+- Write in English even if the input is in Hindi/Hinglish
+- Be concise — 1 to 3 lines max
+- DO NOT repeat the original message word for word
+- DO NOT add any explanation or preamble
+- Just output the clean order summary directly
 
-Example output:
-"2 kg red cotton fabric, 1 roll black thread. Same quality as last week. Urgent delivery needed."`;
+Example input: "bhai 2 kilo laal cotton chahiye same as last time aur jaldi bhejo"
+Example output: "2 kg red cotton fabric. Same quality as previous order. Urgent delivery required."`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
-    return text || mockParse(orderDescription);
+    console.log('✅ Gemini parsed successfully:', text);
+    return text || orderDescription;
 
   } catch (error) {
-    console.error('Gemini API error:', error.message);
-    // Gracefully fall back to mock parser
-    return mockParse(orderDescription);
+    console.error('❌ Gemini API error:', error.message);
+    return orderDescription;
   }
 };
 
-// Keep the old mock exports for backward compatibility
 const mockAIService = parseOrderWithAI;
+
 const mockPaymentService = () => {
   return new Promise((resolve) => {
     const mockId = Math.random().toString(36).substring(2, 10);
