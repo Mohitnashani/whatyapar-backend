@@ -20,7 +20,7 @@ const OrderCard = ({ order, onUpdate }) => {
     }
   };
 
-  const isAccepted = order.status === 'accepted';
+  const isAccepted = order.status === 'Accepted' || order.status === 'accepted';
   const timeString = new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const dateString = new Date(order.createdAt).toLocaleDateString();
 
