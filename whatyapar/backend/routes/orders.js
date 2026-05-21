@@ -1,22 +1,43 @@
 const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
-const { mockAIService, mockPaymentService } = require('../services/mockServices');
+const User = require('../models/User');
+const mockAIService = require('../services/mockServices');
+const auth = require('../middleware/auth');
 
-// POST /api/orders - Creates a new order and parses with mock AI
-router.post('/', async (req, res) => {
+// GET /api/orders/store/:storeSlug - Fetch store details for customer
+router.get('/store/:storeSlug', async (req, res) => {
   try {
+    const store = await User.findOne({ storeSlug: req.params.storeSlug }).select('storeName storeSlug');
+    if (!store) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+    res.json(store);
+  } catch (error) {
+    console.error('Error fetching store:', error);
+    res.status(500).json({ error: 'Failed to fetch store' });
+  }
+});
+
+// POST /api/orders/:storeSlug - Customer submits an order to a specific store
+router.post('/:storeSlug', async (req, res) => {
+  try {
+    const store = await User.findOne({ storeSlug: req.params.storeSlug });
+    if (!store) {
+      return res.status(404).json({ error: 'Store not found' });
+    }
+
     const { customerName, mobileNumber, orderDescription } = req.body;
 
-    // 1. Get mock AI summary
+    // Simulate AI parsing
     const aiSummary = await mockAIService(orderDescription);
 
-    // 2. Save order to DB
     const newOrder = new Order({
+      storeId: store._id,
       customerName,
       mobileNumber,
       orderDescription,
-      aiSummary
+      aiSummary,
     });
 
     const savedOrder = await newOrder.save();
@@ -27,10 +48,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/orders - Fetches all orders (for dashboard)
-router.get('/', async (req, res) => {
+// GET /api/orders - Get all pending orders (Protected: Only for the logged in store owner)
+router.get('/', auth, async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find({ storeId: req.user.id }).sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     console.error('Error fetching orders:', error);
@@ -38,27 +59,18 @@ router.get('/', async (req, res) => {
   }
 });
 
-// PUT /api/orders/:id/accept - Accepts an order and generates mock payment link
-router.put('/:id/accept', async (req, res) => {
+// PUT /api/orders/:id/accept - Accept an order (Protected)
+router.put('/:id/accept', auth, async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // 1. Find the order
-    const order = await Order.findById(id);
+    const order = await Order.findOne({ _id: req.params.id, storeId: req.user.id });
+    
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    if (order.status !== 'Pending') {
-      return res.status(400).json({ error: `Order is already ${order.status}` });
-    }
-
-    // 2. Generate mock payment link
-    const paymentLink = await mockPaymentService();
-
-    // 3. Update order
-    order.status = 'Accepted';
-    order.paymentLink = paymentLink;
+    order.status = 'accepted';
+    // Dummy payment link simulation
+    order.paymentLink = `https://pay.whatyapar.com/${order._id}`;
     
     const updatedOrder = await order.save();
     res.json(updatedOrder);

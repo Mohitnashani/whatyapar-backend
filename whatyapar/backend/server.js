@@ -4,6 +4,7 @@ const cors = require('cors');
 require('dotenv').config();
 
 const orderRoutes = require('./routes/orders');
+const authRoutes = require('./routes/auth');
 
 const app = express();
 
@@ -20,6 +21,7 @@ mongoose.connect(MONGODB_URI)
   .catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 
 // Root route so you don't get "Cannot GET /"

@@ -11,8 +11,16 @@ baseURL: 'https://whatyapar-backend.onrender.com/api',
   },
 });
 
-export const createOrder = async (orderData) => {
-  const response = await api.post('/orders', orderData);
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('whatyapar_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const createOrder = async (storeSlug, orderData) => {
+  const response = await api.post(`/orders/${storeSlug}`, orderData);
   return response.data;
 };
 
