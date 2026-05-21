@@ -8,5 +8,6 @@ export const generateWhatsAppLink = (mobileNumber, aiSummary, paymentLink) => {
 
 export const sendWhatsAppMessage = (mobileNumber, aiSummary, paymentLink) => {
   const url = generateWhatsAppLink(mobileNumber, aiSummary, paymentLink);
-  window.open(url, '_blank');
+  // Use window.location.href instead of window.open to bypass popup blockers after async await
+  window.location.href = url;
 };
