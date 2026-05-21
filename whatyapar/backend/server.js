@@ -22,6 +22,11 @@ mongoose.connect(MONGODB_URI)
 // Routes
 app.use('/api/orders', orderRoutes);
 
+// Root route so you don't get "Cannot GET /"
+app.get('/', (req, res) => {
+  res.send('Whatyapar Backend is running! Go to your frontend URL to use the app.');
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
