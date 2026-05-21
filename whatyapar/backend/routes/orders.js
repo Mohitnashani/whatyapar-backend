@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const User = require('../models/User');
-const mockAIService = require('../services/mockServices');
+const { mockAIService } = require('../services/mockServices');
 const auth = require('../middleware/auth');
 
 // GET /api/orders/store/:storeSlug - Fetch store details for customer
