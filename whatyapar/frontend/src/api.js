@@ -1,7 +1,11 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api', // Hardcoded for MVP, should be env var
+// Change this:
+// baseURL: 'http://localhost:5000/api',
+
+// To this (using your actual Render URL):
+baseURL: 'https://whatyapar-backend.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
