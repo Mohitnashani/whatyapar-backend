@@ -1,11 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-// Change this:
-// baseURL: 'http://localhost:5000/api',
-
-// To this (using your actual Render URL):
-baseURL: 'https://whatyapar-backend.onrender.com/api',
+  baseURL: 'https://whatyapar-backend.onrender.com/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,8 +25,13 @@ export const getOrders = async () => {
   return response.data;
 };
 
-export const acceptOrder = async (id) => {
-  const response = await api.put(`/orders/${id}/accept`);
+export const acceptOrder = async (id, price = 0) => {
+  const response = await api.put(`/orders/${id}/accept`, { price });
+  return response.data;
+};
+
+export const getAnalytics = async () => {
+  const response = await api.get('/orders/analytics');
   return response.data;
 };
 

@@ -20,11 +20,15 @@ const orderSchema = new mongoose.Schema({
   },
   aiSummary: {
     type: String,
-    default: "",
+    default: '',
   },
   paymentLink: {
     type: String,
-    default: "",
+    default: '',
+  },
+  price: {
+    type: Number,
+    default: 0,
   },
   status: {
     type: String,
