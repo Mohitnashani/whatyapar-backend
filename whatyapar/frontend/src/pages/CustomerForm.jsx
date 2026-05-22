@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { createOrder } from '../api';
-import { Store, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import api from '../api';
 
 const CustomerForm = () => {
@@ -9,179 +8,183 @@ const CustomerForm = () => {
   const [storeName, setStoreName] = useState('');
   const [loadingStore, setLoadingStore] = useState(true);
   const [storeError, setStoreError] = useState(false);
-
   const [customerName, setCustomerName] = useState('');
   const [mobileNumber, setMobileNumber] = useState('');
   const [orderDescription, setOrderDescription] = useState('');
-  const [status, setStatus] = useState('idle'); // idle, loading, success, error
+  const [status, setStatus] = useState('idle');
 
   useEffect(() => {
     const fetchStore = async () => {
       try {
-        const response = await api.get(`/orders/store/${storeSlug}`);
-        setStoreName(response.data.storeName);
-      } catch (error) {
-        console.error("Store not found", error);
+        const res = await api.get(`/orders/store/${storeSlug}`);
+        setStoreName(res.data.storeName);
+      } catch {
         setStoreError(true);
       } finally {
         setLoadingStore(false);
       }
     };
-    if (storeSlug) {
-      fetchStore();
-    } else {
-      setStoreError(true);
-      setLoadingStore(false);
-    }
+    if (storeSlug) fetchStore();
+    else { setStoreError(true); setLoadingStore(false); }
   }, [storeSlug]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('loading');
-    
     try {
-      await createOrder(storeSlug, {
-        customerName,
-        mobileNumber,
-        orderDescription
-      });
+      await createOrder(storeSlug, { customerName, mobileNumber, orderDescription });
       setStatus('success');
-      // Reset form
-      setCustomerName('');
-      setMobileNumber('');
-      setOrderDescription('');
-    } catch (error) {
+      setCustomerName(''); setMobileNumber(''); setOrderDescription('');
+    } catch {
       setStatus('error');
     }
   };
 
-  if (loadingStore) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+  if (loadingStore) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <div style={{ width: 40, height: 40, border: '3px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  );
 
-  if (storeError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 text-red-500 mb-4">
-            <AlertCircle size={32} />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Store Not Found</h1>
-          <p className="text-gray-500 mb-6">The link you followed seems to be invalid or the store no longer exists.</p>
-          <Link to="/" className="text-indigo-600 font-semibold hover:text-indigo-700">Go to homepage</Link>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
-        
-        {/* Header */}
-        <div className="bg-gradient-to-br from-indigo-600 to-purple-700 px-8 py-10 text-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          <div className="relative z-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md text-white mb-4 shadow-lg border border-white/20">
-              <Store size={32} strokeWidth={1.5} />
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-1">{storeName}</h2>
-            <p className="text-indigo-100 text-sm font-medium">Place your order via WhatsApp</p>
-          </div>
-        </div>
-
-        {/* Form Area */}
-        <div className="px-8 py-8">
-          {status === 'success' ? (
-            <div className="text-center py-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-500 mb-4">
-                <CheckCircle2 size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Order Submitted!</h3>
-              <p className="text-gray-500 mb-6">
-                Your order has been sent to {storeName}. They will review it and send you a payment link on WhatsApp shortly.
-              </p>
-              <button 
-                onClick={() => setStatus('idle')}
-                className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
-              >
-                Place another order
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {status === 'error' && (
-                <div className="p-4 bg-red-50 text-red-700 rounded-xl text-sm font-medium flex items-start">
-                  <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
-                  <span>Failed to submit order. Please try again or contact the store directly.</span>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Your Name</label>
-                <input
-                  type="text"
-                  required
-                  className="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-gray-900"
-                  placeholder="John Doe"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">WhatsApp Number</label>
-                <input
-                  type="tel"
-                  required
-                  className="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-gray-900"
-                  placeholder="+1 (555) 000-0000"
-                  value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">What would you like to order?</label>
-                <textarea
-                  required
-                  rows="4"
-                  className="block w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-gray-900 resize-none"
-                  placeholder="E.g., I want 2 vanilla cakes and 1 dozen chocolate chip cookies for tomorrow evening..."
-                  value={orderDescription}
-                  onChange={(e) => setOrderDescription(e.target.value)}
-                ></textarea>
-                <p className="mt-2 text-xs text-gray-500 text-right">Just type naturally!</p>
-              </div>
-
-              <button
-                type="submit"
-                disabled={status === 'loading'}
-                className="w-full flex items-center justify-center py-4 px-4 border border-transparent rounded-xl shadow-sm text-base font-semibold text-white bg-gray-900 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-              >
-                {status === 'loading' ? (
-                  <div className="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                ) : (
-                  <>
-                    <Send className="mr-2 h-5 w-5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
-                    Submit Order
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
-      
-      {/* Footer Branding */}
-      <div className="fixed bottom-6 left-0 w-full text-center pointer-events-none">
-        <p className="text-xs font-medium text-gray-400">Powered by <span className="text-indigo-400 font-bold">Whatyapar</span></p>
+  if (storeError) return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+      <div className="bg-white rounded-3xl p-10 text-center max-w-sm w-full shadow-2xl">
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔗</div>
+        <h1 className="text-xl font-bold text-gray-900 mb-2">Store Not Found</h1>
+        <p className="text-gray-500 text-sm">This link is invalid or the store no longer exists. Please contact the business directly.</p>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 70% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+        .form-card { animation: fadeUp 0.5s ease forwards; }
+        .success-icon { animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .field { position: relative; }
+        .field input, .field textarea {
+          width: 100%; padding: 14px 16px; border: 1.5px solid #e5e7eb; border-radius: 14px;
+          font-size: 15px; background: #f9fafb; outline: none; transition: all 0.2s; color: #111;
+          -webkit-appearance: none;
+        }
+        .field input:focus, .field textarea:focus {
+          border-color: #6366f1; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+        .field label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .submit-btn {
+          width: 100%; padding: 16px; border: none; border-radius: 14px; font-size: 15px; font-weight: 700;
+          color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+          background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+          box-shadow: 0 4px 24px rgba(37, 211, 102, 0.35); transition: all 0.2s; letter-spacing: 0.01em;
+        }
+        .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(37, 211, 102, 0.45); }
+        .submit-btn:active { transform: translateY(0); }
+        .submit-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .bg-page { min-height: 100vh; background: linear-gradient(160deg, #6366f1 0%, #7c3aed 40%, #4f46e5 100%); }
+      `}</style>
+
+      <div className="bg-page" style={{ padding: '24px 16px 80px' }}>
+        {/* Floating dots decoration */}
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+          {[...Array(6)].map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute', borderRadius: '50%', background: 'rgba(255,255,255,0.05)',
+              width: [120, 80, 160, 60, 200, 100][i], height: [120, 80, 160, 60, 200, 100][i],
+              top: ['10%', '60%', '30%', '80%', '5%', '70%'][i],
+              left: ['5%', '80%', '70%', '10%', '50%', '40%'][i],
+            }} />
+          ))}
+        </div>
+
+        <div style={{ maxWidth: 420, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+          {/* Store Header */}
+          <div className="form-card" style={{ textAlign: 'center', marginBottom: 20, paddingTop: 20 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: 20, background: 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(16px)', border: '1.5px solid rgba(255,255,255,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+              fontSize: 32, boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+            }}>🏪</div>
+            <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>{storeName}</h1>
+            <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: 6 }}>Place your order • We'll reply on WhatsApp</p>
+          </div>
+
+          {/* Card */}
+          <div className="form-card" style={{ background: '#fff', borderRadius: 24, padding: 28, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+            {status === 'success' ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div className="success-icon" style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: '#111', margin: '0 0 8px' }}>Order Received!</h2>
+                <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.6, margin: '0 0 24px' }}>
+                  <strong>{storeName}</strong> will review your order and send you a payment link on WhatsApp shortly.
+                </p>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '12px 16px', marginBottom: 20, textAlign: 'left' }}>
+                  <p style={{ margin: 0, fontSize: 13, color: '#166534', fontWeight: 500 }}>💡 Keep your WhatsApp ready — you'll receive a message soon!</p>
+                </div>
+                <button onClick={() => setStatus('idle')} style={{
+                  background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 12, padding: '10px 24px',
+                  fontSize: 14, fontWeight: 600, color: '#6366f1', cursor: 'pointer'
+                }}>
+                  Place Another Order
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                <div style={{ marginBottom: 4 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 800, color: '#111', margin: '0 0 4px' }}>Place Your Order</h2>
+                  <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>Type in any language — Hindi, English, or Hinglish</p>
+                </div>
+
+                {status === 'error' && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 14px', fontSize: 13, color: '#b91c1c', fontWeight: 500 }}>
+                    ⚠️ Submission failed. Please try again or contact the store directly.
+                  </div>
+                )}
+
+                <div className="field">
+                  <label>Your Name</label>
+                  <input type="text" required placeholder="Rahul Sharma" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                </div>
+
+                <div className="field">
+                  <label>WhatsApp Number</label>
+                  <input type="tel" required placeholder="98765 43210" value={mobileNumber} onChange={e => setMobileNumber(e.target.value)} />
+                </div>
+
+                <div className="field">
+                  <label>What do you want to order?</label>
+                  <textarea required rows={4} placeholder={`Type naturally!\n\nE.g. "2 kg aata, 1 litre doodh aur ek dozen ande dena bhai"`}
+                    value={orderDescription} onChange={e => setOrderDescription(e.target.value)}
+                    style={{ resize: 'none' }}
+                  />
+                  <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 6, textAlign: 'right' }}>
+                    AI will parse your order automatically ✨
+                  </p>
+                </div>
+
+                <button type="submit" className="submit-btn" disabled={status === 'loading'}>
+                  {status === 'loading' ? (
+                    <div style={{ width: 20, height: 20, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  ) : (
+                    <><span style={{ fontSize: 18 }}>📲</span> Send Order via WhatsApp</>
+                  )}
+                </button>
+              </form>
+            )}
+          </div>
+
+          {/* Powered by */}
+          <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 20 }}>
+            Powered by <span style={{ color: '#fff', fontWeight: 700 }}>Whatyapar</span> • AI Order Management
+          </p>
+        </div>
+      </div>
+    </>
   );
 };
 

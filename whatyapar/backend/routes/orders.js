@@ -82,7 +82,7 @@ router.get('/analytics', auth, async (req, res) => {
     const monthly = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const label = d.toLocaleString('default', { month: 'short', year: '2-digit' });
+      const label = d.toLocaleString('en-IN', { month: 'short', year: '2-digit' });
       const monthOrders = allOrders.filter(o => {
         const od = new Date(o.createdAt);
         return od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
