@@ -23,7 +23,13 @@ const orderSchema = new mongoose.Schema({
     default: '',
   },
   items: {
-    type: [String],
+    type: [
+      {
+        name: { type: String, required: true },
+        quantity: { type: Number, default: 1 },
+        unit: { type: String, default: '' },
+      }
+    ],
     default: [],
   },
   paymentLink: {

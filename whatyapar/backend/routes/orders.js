@@ -34,33 +34,43 @@ router.get('/analytics', auth, async (req, res) => {
       });
     }
 
-    // --- Top items: count from structured items array (AI-normalized English names) ---
+    // --- Top items: sum QUANTITIES per item (AI-normalized English names) ---
     const itemMap = {};
     allOrders.forEach(order => {
-      // Use structured items array if available (new orders)
       if (order.items && order.items.length > 0) {
         order.items.forEach(item => {
-          const key = item.trim().toLowerCase();
-          if (key.length > 1) itemMap[key] = (itemMap[key] || 0) + 1;
+          // item is { name, quantity, unit }
+          const key = item.name ? item.name.trim().toLowerCase() : null;
+          if (!key || key.length < 2) return;
+          if (!itemMap[key]) {
+            itemMap[key] = { name: key, totalQuantity: 0, orderCount: 0, unit: item.unit || '' };
+          }
+          itemMap[key].totalQuantity += Number(item.quantity) || 1;
+          itemMap[key].orderCount += 1;
+          // Use the most common unit for display
+          if (item.unit) itemMap[key].unit = item.unit;
         });
       } else {
-        // Fallback: parse from AI summary for older orders
+        // Fallback for old string-based items or raw text
         const summary = (order.aiSummary || order.orderDescription || '')
           .replace(/^AI Parsed:\s*/i, '');
         summary.split(',').forEach(part => {
-          // Strip leading numbers/quantities (e.g. "2 kg cotton" → "cotton")
           const cleaned = part.trim().toLowerCase()
-            .replace(/^\d+\s*(kg|g|litre|l|ml|piece|pcs|dozen|meter|m|roll|packet|pack|box)?\s*/i, '')
+            .replace(/^\d+(\.\d+)?\s*(kg|g|litre|l|ml|piece|pcs|dozen|meter|m|roll|packet|pack|box)?\s*/i, '')
             .trim();
-          if (cleaned.length > 2) itemMap[cleaned] = (itemMap[cleaned] || 0) + 1;
+          if (cleaned.length > 2) {
+            if (!itemMap[cleaned]) itemMap[cleaned] = { name: cleaned, totalQuantity: 0, orderCount: 0, unit: '' };
+            itemMap[cleaned].totalQuantity += 1;
+            itemMap[cleaned].orderCount += 1;
+          }
         });
       }
     });
 
-    const topItems = Object.entries(itemMap)
-      .sort((a, b) => b[1] - a[1])
+    const topItems = Object.values(itemMap)
+      .sort((a, b) => b.totalQuantity - a.totalQuantity)
       .slice(0, 10)
-      .map(([name, count]) => ({ name, count }));
+      .map(({ name, totalQuantity, orderCount, unit }) => ({ name, totalQuantity, orderCount, unit }));
 
     // --- Customer directory ---
     const customerMap = {};
