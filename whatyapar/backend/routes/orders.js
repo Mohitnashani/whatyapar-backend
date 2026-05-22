@@ -10,15 +10,14 @@ const auth = require('../middleware/auth');
 router.get('/analytics', auth, async (req, res) => {
   try {
     const storeId = new mongoose.Types.ObjectId(req.user.id);
-
-    // --- Stats ---
     const allOrders = await Order.find({ storeId });
+
     const totalOrders = allOrders.length;
     const pendingOrders = allOrders.filter(o => o.status === 'Pending').length;
     const acceptedOrders = allOrders.filter(o => o.status === 'Accepted' || o.status === 'Paid').length;
     const totalRevenue = allOrders.reduce((sum, o) => sum + (o.price || 0), 0);
 
-    // --- Monthly data for last 6 months ---
+    // --- Monthly data (last 6 months) ---
     const now = new Date();
     const monthly = [];
     for (let i = 5; i >= 0; i--) {
@@ -35,22 +34,32 @@ router.get('/analytics', auth, async (req, res) => {
       });
     }
 
-    // --- Top items (parse from AI summaries) ---
+    // --- Top items: count from structured items array (AI-normalized English names) ---
     const itemMap = {};
     allOrders.forEach(order => {
-      const summary = order.aiSummary || order.orderDescription || '';
-      // Remove the "AI Parsed:" prefix if present
-      const cleaned = summary.replace(/^AI Parsed:\s*/i, '');
-      cleaned.split(',').forEach(item => {
-        const trimmed = item.trim().toLowerCase();
-        if (trimmed.length > 1) {
-          itemMap[trimmed] = (itemMap[trimmed] || 0) + 1;
-        }
-      });
+      // Use structured items array if available (new orders)
+      if (order.items && order.items.length > 0) {
+        order.items.forEach(item => {
+          const key = item.trim().toLowerCase();
+          if (key.length > 1) itemMap[key] = (itemMap[key] || 0) + 1;
+        });
+      } else {
+        // Fallback: parse from AI summary for older orders
+        const summary = (order.aiSummary || order.orderDescription || '')
+          .replace(/^AI Parsed:\s*/i, '');
+        summary.split(',').forEach(part => {
+          // Strip leading numbers/quantities (e.g. "2 kg cotton" → "cotton")
+          const cleaned = part.trim().toLowerCase()
+            .replace(/^\d+\s*(kg|g|litre|l|ml|piece|pcs|dozen|meter|m|roll|packet|pack|box)?\s*/i, '')
+            .trim();
+          if (cleaned.length > 2) itemMap[cleaned] = (itemMap[cleaned] || 0) + 1;
+        });
+      }
     });
+
     const topItems = Object.entries(itemMap)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
+      .slice(0, 10)
       .map(([name, count]) => ({ name, count }));
 
     // --- Customer directory ---
@@ -99,7 +108,11 @@ router.post('/:storeSlug', async (req, res) => {
     if (!store) return res.status(404).json({ error: 'Store not found' });
 
     const { customerName, mobileNumber, orderDescription } = req.body;
-    const aiSummary = await mockAIService(orderDescription);
+
+    // AI returns { summary, items } — both used for storage
+    const aiResult = await mockAIService(orderDescription);
+    const aiSummary = typeof aiResult === 'string' ? aiResult : (aiResult.summary || orderDescription);
+    const items = typeof aiResult === 'object' && Array.isArray(aiResult.items) ? aiResult.items : [];
 
     const newOrder = new Order({
       storeId: store._id,
@@ -107,6 +120,7 @@ router.post('/:storeSlug', async (req, res) => {
       mobileNumber,
       orderDescription,
       aiSummary,
+      items,
     });
 
     const savedOrder = await newOrder.save();
@@ -130,13 +144,11 @@ router.get('/', auth, async (req, res) => {
 });
 
 // PUT /api/orders/:id/accept - Accept an order with price (Protected)
-// BUG FIX: Use findByIdAndUpdate + explicit ObjectId cast to avoid string vs ObjectId mismatch
 router.put('/:id/accept', auth, async (req, res) => {
   try {
     const storeId = new mongoose.Types.ObjectId(req.user.id);
     const { price } = req.body;
 
-    // First verify the order belongs to this store
     const existing = await Order.findOne({
       _id: new mongoose.Types.ObjectId(req.params.id),
       storeId,
@@ -150,11 +162,7 @@ router.put('/:id/accept', auth, async (req, res) => {
 
     const updatedOrder = await Order.findByIdAndUpdate(
       req.params.id,
-      {
-        status: 'Accepted',
-        paymentLink,
-        price: price || 0,
-      },
+      { status: 'Accepted', paymentLink, price: price || 0 },
       { new: true }
     );
 

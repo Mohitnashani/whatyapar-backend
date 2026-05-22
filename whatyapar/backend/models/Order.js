@@ -22,6 +22,10 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  items: {
+    type: [String],
+    default: [],
+  },
   paymentLink: {
     type: String,
     default: '',

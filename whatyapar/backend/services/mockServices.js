@@ -1,15 +1,17 @@
 const Groq = require('groq-sdk');
 
-// Simple mock fallback if no AI key is configured
 const mockParse = (orderDescription) => {
-  return orderDescription; // return as-is honestly
+  return {
+    summary: orderDescription,
+    items: orderDescription.split(/,|\n/).map(i => i.trim()).filter(i => i.length > 1),
+  };
 };
 
 const parseOrderWithAI = async (orderDescription) => {
   const groqKey = process.env.GROQ_API_KEY;
 
   if (!groqKey) {
-    console.warn('⚠️  GROQ_API_KEY not set — AI parsing disabled. Add it in Render environment variables.');
+    console.warn('⚠️  GROQ_API_KEY not set — AI parsing disabled.');
     return mockParse(orderDescription);
   }
 
@@ -19,33 +21,50 @@ const parseOrderWithAI = async (orderDescription) => {
     const groq = new Groq({ apiKey: groqKey });
 
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant', // Current active free model on Groq
+      model: 'llama-3.1-8b-instant',
       messages: [
         {
           role: 'system',
-          content: `You are an order parser for a small Indian business. 
-Your job is to read a customer's order message (may be in English, Hindi, or Hinglish) and write a clean, professional order summary for the shop owner.
+          content: `You are an order parser for a small Indian business. The customer message may be in English, Hindi, or Hinglish.
 
-Rules:
-- Write in English only
-- Be concise: 1 to 3 lines max
-- Include items, quantities, sizes, colors if mentioned
-- Include any special instructions or urgency
-- DO NOT repeat the message word for word — actually summarize it
-- DO NOT add any preamble like "Here is the summary:" — just write the summary directly`
+Your task: Return a JSON object with exactly two fields:
+1. "summary" — A clean 1–3 line professional order summary in English for the shop owner
+2. "items" — A list of normalized English item names only (no quantities, no descriptions, just the core item name)
+
+IMPORTANT rules for "items":
+- Always use English item names (convert Hindi/Hinglish to English)
+- Treat the same product in different languages as ONE item:
+  Examples: "aata"→"wheat flour", "chawal"→"rice", "doodh"→"milk", "makhan"→"butter",
+  "tel"→"oil", "cheeni"→"sugar", "namak"→"salt", "sabun"→"soap",
+  "laal cotton"→"red cotton fabric", "kala thread"→"black thread"
+- Use lowercase, simple names
+- No duplicates
+- If quantity is mentioned, still just put the item name (not the quantity)
+
+Respond ONLY with valid JSON, nothing else. Example:
+{
+  "summary": "2 kg wheat flour and 1 litre mustard oil. Urgent delivery.",
+  "items": ["wheat flour", "mustard oil"]
+}`
         },
         {
           role: 'user',
-          content: `Customer order message: "${orderDescription}"`
+          content: `Parse this order: "${orderDescription}"`
         }
       ],
-      temperature: 0.3,
-      max_tokens: 150,
+      temperature: 0.1,
+      max_tokens: 300,
+      response_format: { type: 'json_object' },
     });
 
-    const text = completion.choices[0]?.message?.content?.trim();
-    console.log('✅ Groq AI parsed successfully:', text);
-    return text || mockParse(orderDescription);
+    const raw = completion.choices[0]?.message?.content?.trim();
+    console.log('✅ Groq raw response:', raw);
+
+    const parsed = JSON.parse(raw);
+    const summary = parsed.summary || orderDescription;
+    const items = Array.isArray(parsed.items) ? parsed.items.map(i => i.toLowerCase().trim()).filter(Boolean) : [];
+
+    return { summary, items };
 
   } catch (error) {
     console.error('❌ Groq AI error:', error.message);
@@ -53,6 +72,7 @@ Rules:
   }
 };
 
+// mockAIService now returns { summary, items }
 const mockAIService = parseOrderWithAI;
 
 const mockPaymentService = () => {
