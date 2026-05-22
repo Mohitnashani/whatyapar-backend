@@ -30,37 +30,54 @@ const parseOrderWithAI = async (orderDescription) => {
 
 Return a JSON object with exactly two fields:
 
-1. "summary" — A clean 1–3 line professional order summary in English for the shop owner.
+1. "summary" — A clean 1-3 line professional order summary in English for the shop owner.
 
 2. "items" — An array of objects. Each object must have:
-   - "name": normalized English item name (lowercase, no quantities, no adjectives except type/color if important)
+   - "name": normalized English item name (lowercase, SINGULAR form, CORRECT standard spelling — see rules below)
    - "quantity": numeric quantity (default 1 if not mentioned)
-   - "unit": unit string like "kg", "g", "litre", "ml", "piece", "dozen", "box", "packet", "meter", "roll", "bottle", "strip" — empty string if no unit
+   - "unit": unit string like "kg", "g", "litre", "ml", "piece", "dozen", "box", "packet", "meter", "roll", "bottle", "strip", "tablet" — empty string if no unit
 
-IMPORTANT normalization rules:
-- Always use English names even if order is in Hindi/Hinglish
-- Treat same item across languages as ONE:
-  "aata" → "wheat flour", "chawal" → "rice", "doodh" → "milk",
-  "tel" → "oil", "cheeni" → "sugar", "namak" → "salt",
-  "sabun" → "soap", "makhan" → "butter", "chai patti" → "tea leaves",
-  "laal cotton" → "red cotton", "kala thread" → "black thread"
-- Extract the actual numeric quantity (e.g. "5 kg aata" → quantity: 5, unit: "kg")
-- If someone says "do kilo" → quantity: 2, unit: "kg"
-- If no quantity mentioned → quantity: 1, unit: ""
+CRITICAL SPELLING RULES — always use the correct standard spelling:
+- paracetomol / paracetomole / paracetamole / paracetamal → "paracetamol"
+- crocine / krocin / krosin / crocin → "crocin"
+- bannana / bananaa / bananna → "banana"
+- biscut / biskit / biscit → "biscuit"
+- toothpast / toothpase / tothpaste → "toothpaste"
+- Always use SINGULAR: bananas→banana, tablets→tablet, bottles→bottle, eggs→egg
+
+HINDI/HINGLISH TO ENGLISH:
+- "aata" / "atta" → "wheat flour"
+- "chawal" / "chaawal" → "rice"
+- "doodh" / "dudh" → "milk"
+- "tel" → "oil", "sarson tel" → "mustard oil"
+- "cheeni" / "chini" → "sugar"
+- "namak" / "noon" → "salt"
+- "sabun" → "soap"
+- "makhan" → "butter"
+- "chai patti" → "tea leaves"
+- "ande" / "anda" → "egg"
+- "laal" → "red", "kala" → "black", "safed" → "white"
+- Number words: "ek"→1, "do"→2, "teen"→3, "char"→4, "paanch"→5, "das"→10
+
+QUANTITY RULES:
+- Extract actual numeric quantity ("5 kg aata" → quantity:5, unit:"kg")
+- "do kilo" → quantity:2, unit:"kg"
+- "ek dozen" → quantity:1, unit:"dozen"
 - No duplicates in items array
 
-Example input: "bhai 5 kilo aata aur 2 litre tel dena, aur ek dozen ande"
+Example input: "bhai 5 kilo aata aur 2 litre tel dena, ek dozen ande aur paracetomol 10 tablet"
 Example output:
 {
-  "summary": "5 kg wheat flour, 2 litre oil, and 1 dozen eggs.",
+  "summary": "5 kg wheat flour, 2 litres mustard oil, 1 dozen eggs, and 10 tablets of paracetamol.",
   "items": [
     { "name": "wheat flour", "quantity": 5, "unit": "kg" },
     { "name": "oil", "quantity": 2, "unit": "litre" },
-    { "name": "eggs", "quantity": 1, "unit": "dozen" }
+    { "name": "egg", "quantity": 1, "unit": "dozen" },
+    { "name": "paracetamol", "quantity": 10, "unit": "tablet" }
   ]
 }
 
-Respond ONLY with valid JSON. No extra text.`
+Respond ONLY with valid JSON. No extra text outside the JSON.`
         },
         {
           role: 'user',

@@ -6,6 +6,66 @@ const User = require('../models/User');
 const { mockAIService } = require('../services/mockServices');
 const auth = require('../middleware/auth');
 
+// ─── Fuzzy helpers ─────────────────────────────────────────────────────────
+
+// Simple Levenshtein distance
+const levenshtein = (a, b) => {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1]
+        ? dp[i-1][j-1]
+        : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[m][n];
+};
+
+// Normalize a name: lowercase, trim, strip trailing 's'/'es' for plurals
+const normalize = (name) => {
+  let n = name.toLowerCase().trim();
+  if (n.endsWith('es') && n.length > 4) n = n.slice(0, -2); // boxes→box
+  else if (n.endsWith('s') && n.length > 3) n = n.slice(0, -1);  // bananas→banana
+  return n;
+};
+
+// Merge itemMap entries that are fuzzy-similar (edit distance ≤ 2)
+// Keeps the entry with the highest totalQuantity as the canonical name
+const fuzzyMergeItems = (itemMap) => {
+  const keys = Object.keys(itemMap);
+  const merged = {}; // canonical key → merged entry
+  const assigned = {}; // key → canonical key
+
+  keys.forEach(key => {
+    if (assigned[key]) return;
+    // This key starts a new group
+    const normKey = normalize(key);
+    merged[key] = { ...itemMap[key] };
+    assigned[key] = key;
+
+    keys.forEach(other => {
+      if (other === key || assigned[other]) return;
+      const normOther = normalize(other);
+      const dist = levenshtein(normKey, normOther);
+      // Merge if edit distance ≤ 2 OR one is a substring of the other (short names)
+      const maxLen = Math.max(normKey.length, normOther.length);
+      const threshold = maxLen <= 6 ? 1 : 2;
+      if (dist <= threshold) {
+        // Merge other into key
+        merged[key].totalQuantity += itemMap[other].totalQuantity;
+        merged[key].orderCount += itemMap[other].orderCount;
+        if (!merged[key].unit && itemMap[other].unit) merged[key].unit = itemMap[other].unit;
+        assigned[other] = key;
+      }
+    });
+  });
+
+  return merged;
+};
+// ───────────────────────────────────────────────────────────────────────────
+
+
 // GET /api/orders/analytics - Dashboard analytics (Protected)
 router.get('/analytics', auth, async (req, res) => {
   try {
@@ -67,10 +127,14 @@ router.get('/analytics', auth, async (req, res) => {
       }
     });
 
-    const topItems = Object.values(itemMap)
+    // Apply fuzzy merge to group similar names (paracetomol = paracetamol, banana = bananas)
+    const mergedItems = fuzzyMergeItems(itemMap);
+
+    const topItems = Object.values(mergedItems)
       .sort((a, b) => b.totalQuantity - a.totalQuantity)
       .slice(0, 10)
       .map(({ name, totalQuantity, orderCount, unit }) => ({ name, totalQuantity, orderCount, unit }));
+
 
     // --- Customer directory ---
     const customerMap = {};
