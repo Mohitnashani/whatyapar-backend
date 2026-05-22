@@ -1,45 +1,55 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
+
+// Simple mock fallback if no AI key is configured
+const mockParse = (orderDescription) => {
+  return orderDescription; // return as-is honestly
+};
 
 const parseOrderWithAI = async (orderDescription) => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
 
-  if (!apiKey) {
-    console.warn('⚠️  GEMINI_API_KEY not set on server — AI parsing disabled. Set it in Render environment variables.');
-    return orderDescription; // Return raw text so at least it's honest
+  if (!groqKey) {
+    console.warn('⚠️  GROQ_API_KEY not set — AI parsing disabled. Add it in Render environment variables.');
+    return mockParse(orderDescription);
   }
 
   try {
-    console.log('🤖 Calling Gemini to parse order...');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    console.log('🤖 Calling Groq AI to parse order...');
 
-    const prompt = `You are an AI assistant for a small business order management system in India. A customer sent this message to place an order:
+    const groq = new Groq({ apiKey: groqKey });
 
-"${orderDescription}"
-
-Your job:
-1. Understand what the customer wants to order (items, quantities, sizes, colours, etc.)
-2. Note any special requests (delivery time, quality reference, urgency)
-3. Write a clean, structured order summary for the shop owner
+    const completion = await groq.chat.completions.create({
+      model: 'llama3-8b-8192', // Free, fast model on Groq
+      messages: [
+        {
+          role: 'system',
+          content: `You are an order parser for a small Indian business. 
+Your job is to read a customer's order message (may be in English, Hindi, or Hinglish) and write a clean, professional order summary for the shop owner.
 
 Rules:
-- Write in English even if the input is in Hindi/Hinglish
-- Be concise — 1 to 3 lines max
-- DO NOT repeat the original message word for word
-- DO NOT add any explanation or preamble
-- Just output the clean order summary directly
+- Write in English only
+- Be concise: 1 to 3 lines max
+- Include items, quantities, sizes, colors if mentioned
+- Include any special instructions or urgency
+- DO NOT repeat the message word for word — actually summarize it
+- DO NOT add any preamble like "Here is the summary:" — just write the summary directly`
+        },
+        {
+          role: 'user',
+          content: `Customer order message: "${orderDescription}"`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 150,
+    });
 
-Example input: "bhai 2 kilo laal cotton chahiye same as last time aur jaldi bhejo"
-Example output: "2 kg red cotton fabric. Same quality as previous order. Urgent delivery required."`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
-    console.log('✅ Gemini parsed successfully:', text);
-    return text || orderDescription;
+    const text = completion.choices[0]?.message?.content?.trim();
+    console.log('✅ Groq AI parsed successfully:', text);
+    return text || mockParse(orderDescription);
 
   } catch (error) {
-    console.error('❌ Gemini API error:', error.message);
-    return orderDescription;
+    console.error('❌ Groq AI error:', error.message);
+    return mockParse(orderDescription);
   }
 };
 
