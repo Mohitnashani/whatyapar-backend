@@ -87,10 +87,21 @@ router.get('/analytics', auth, async (req, res) => {
         const od = new Date(o.createdAt);
         return od.getMonth() === d.getMonth() && od.getFullYear() === d.getFullYear();
       });
+      const pendingCount = monthOrders.filter(o => o.status === 'Pending').length;
+      const acceptedCount = monthOrders.filter(o => o.status === 'Accepted' || o.status === 'Paid').length;
+      const totalItemQty = monthOrders.reduce((sum, o) => {
+        if (o.items && o.items.length > 0) {
+          return sum + o.items.reduce((s, it) => s + (Number(it.quantity) || 1), 0);
+        }
+        return sum + 1;
+      }, 0);
       monthly.push({
         label,
         orders: monthOrders.length,
+        pending: pendingCount,
+        accepted: acceptedCount,
         revenue: monthOrders.reduce((sum, o) => sum + (o.price || 0), 0),
+        itemQty: totalItemQty,
       });
     }
 
