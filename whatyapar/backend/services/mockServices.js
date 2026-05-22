@@ -19,7 +19,7 @@ const parseOrderWithAI = async (orderDescription) => {
     const groq = new Groq({ apiKey: groqKey });
 
     const completion = await groq.chat.completions.create({
-      model: 'llama3-8b-8192', // Free, fast model on Groq
+      model: 'llama-3.1-8b-instant', // Current active free model on Groq
       messages: [
         {
           role: 'system',
