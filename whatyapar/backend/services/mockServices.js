@@ -11,7 +11,7 @@ const parseOrderWithAI = async (orderDescription) => {
   try {
     console.log('🤖 Calling Gemini to parse order...');
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const prompt = `You are an AI assistant for a small business order management system in India. A customer sent this message to place an order:
 
