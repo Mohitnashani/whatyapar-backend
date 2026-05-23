@@ -25,6 +25,13 @@ const sendEmail = async (options) => {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Fix for ENETUNREACH IPv6 issues on certain networks
+    tls: {
+      rejectUnauthorized: false
+    },
+    // Force Node to resolve to IPv4 instead of IPv6
+    // (Resolves "connect ENETUNREACH 2607:..." error)
+    family: 4 
   });
 
   const mailOptions = {
