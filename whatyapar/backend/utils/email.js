@@ -1,4 +1,7 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+// Force Node.js to use IPv4 instead of IPv6. This is the ultimate fix for ENETUNREACH on Google's SMTP.
+dns.setDefaultResultOrder('ipv4first');
 
 const sendEmail = async (options) => {
   // If no email configuration is provided, mock the email (fallback behavior for local testing)
