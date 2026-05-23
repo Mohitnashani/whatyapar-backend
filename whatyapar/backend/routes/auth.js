@@ -127,12 +127,32 @@ router.post('/forgot-password', async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    // Since we don't have an email server configured, we'll mock the email by logging it
+    // Since we don't have an email server configured by default, the email utility handles mocking if no env vars are set.
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
-    console.log('\n======================================================');
-    console.log(`🔐 MOCK EMAIL SENT TO: ${user.email}`);
-    console.log(`🔗 Password Reset Link: ${resetUrl}`);
-    console.log('======================================================\n');
+    
+    const emailOptions = {
+      to: user.email,
+      subject: 'Password Reset Request - Whatyapar',
+      text: `You requested a password reset. Please go to this link to reset your password: \n\n${resetUrl}\n\nThis link will expire in 1 hour.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; text-align: center; border: 1px solid #e5e7eb; border-radius: 12px;">
+          <h2 style="color: #4f46e5;">Whatyapar Password Reset</h2>
+          <p style="color: #374151; font-size: 16px; margin-bottom: 30px;">
+            We received a request to reset the password for the store: <strong>${user.storeName}</strong>.
+          </p>
+          <a href="${resetUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">
+            Reset My Password
+          </a>
+          <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+            This link will expire in 1 hour. If you did not request this, you can safely ignore this email.
+          </p>
+        </div>
+      `
+    };
+
+    // Require the email util and send
+    const sendEmail = require('../utils/email');
+    await sendEmail(emailOptions);
 
     res.json({ message: 'If an account with that email exists, we have sent a password reset link.', _mockLink: resetUrl });
   } catch (error) {
