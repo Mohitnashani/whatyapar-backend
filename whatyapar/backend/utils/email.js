@@ -35,7 +35,17 @@ const sendEmail = async (options) => {
     html: options.html,
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Email successfully sent to ${options.to} [MessageID: ${info.messageId}]`);
+  } catch (error) {
+    console.error('\n❌ NODEMAILER SMTP ERROR:');
+    console.error('If you are seeing an authentication error, ensure your Gmail App Password has NO SPACES.');
+    console.error(`Attempted to use user: ${process.env.EMAIL_USER}`);
+    console.error(error.message);
+    console.error('------------------------------------------------------\n');
+    throw error; // Re-throw so the auth route catches it and alerts the user
+  }
 };
 
 module.exports = sendEmail;
